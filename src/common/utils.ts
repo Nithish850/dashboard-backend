@@ -11,22 +11,26 @@ export const readCsvFile = (
   filePath: string,
   deleteAfterRead = true
 ): Promise<any[]> => {
-  return new Promise((resolve, reject) => {
-    const results: any[] = [];
+  try {
+    return new Promise((resolve, reject) => {
+      const results: any[] = [];
 
-    fs.createReadStream(filePath)
-      .pipe(csvParser())
-      .on("data", (data) => results.push(data))
-      .on("end", () => {
-        if (deleteAfterRead) {
-          try {
-            fs.unlinkSync(filePath);
-          } catch (err) {
-            console.error("Failed to delete CSV file:", err);
+      fs.createReadStream(filePath)
+        .pipe(csvParser())
+        .on("data", (data) => results.push(data))
+        .on("end", () => {
+          if (deleteAfterRead) {
+            try {
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              console.error("Failed to delete CSV file:", err);
+            }
           }
-        }
-        resolve(results);
-      })
-      .on("error", (err) => reject(err));
-  });
+          resolve(results);
+        })
+        .on("error", (err) => reject(err));
+    });
+  } catch (err) {
+    throw err;
+  }
 };
