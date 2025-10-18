@@ -25,6 +25,22 @@ class UploadController {
       next(error);
     }
   }
+
+  static async getDataByColumns(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const results = await UploadService.getDataByColumns(req);
+      res.status(200).json({
+        success: true,
+        data: results,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default UploadController;

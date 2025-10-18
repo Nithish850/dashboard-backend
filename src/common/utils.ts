@@ -26,11 +26,33 @@ export const readCsvFile = (
               console.error("Failed to delete CSV file:", err);
             }
           }
-          resolve(results);
+          resolve(cleanCsvData(results));
         })
         .on("error", (err) => reject(err));
     });
   } catch (err) {
-    throw err;
+    console.log("Error reading CSV file:", err);
+    throw new Error("Failed to read CSV file");
   }
+};
+
+export const cleanCsvData = (data: Record<string, any>[]) => {
+  if (!Array.isArray(data)) return [];
+
+  return data.map((row) => {
+    const cleanedRow: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(row)) {
+      const trimmed = String(value ?? "").trim();
+
+      // Convert numeric strings (e.g., "123", "45.67") into numbers
+      if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+        cleanedRow[key] = Number(trimmed);
+      } else {
+        cleanedRow[key] = trimmed;
+      }
+    }
+
+    return cleanedRow;
+  });
 };
