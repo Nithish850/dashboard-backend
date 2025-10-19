@@ -1,16 +1,10 @@
-import {
-  Model,
-  DataTypes,
-  InferAttributes,
-  InferCreationAttributes,
-  CreationOptional,
-} from "sequelize";
-import { sequelize } from "../db"; // your sequelize instance
+import { Model, DataTypes, CreationOptional } from "sequelize";
+import { sequelize } from "../db";
 
 export class FilesData extends Model {
-  declare id: CreationOptional<string>; // UUID
+  declare id: CreationOptional<string>;
   declare fileName: string;
-  declare fileContent: object[]; // array of objects from CSV
+  declare fileContent: object[];
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }

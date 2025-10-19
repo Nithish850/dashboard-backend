@@ -1,82 +1,82 @@
 import { Request } from "express";
 import { readCsvFile } from "../common/utils";
-import { sequelize } from "../database/db";
-import { QueryTypes } from "sequelize";
-import { FileRecord } from "../interface/uploadService.interface";
-import { v4 as uuidv4 } from "uuid";
 import alasql from "alasql";
-import { FilesData } from "../database/models/fiels_data.model";
+import { FilesData } from "../database/models/files_data.model";
 
 class UploadService {
-  constructor(private readonly filesData: typeof FilesData) {}
-  static async processCsv(req: Request): Promise<any[]> {
-    if (!req.file || (req.file.mimetype !== "text/csv" && !req.body?.fileId)) {
-      throw new Error("file id or CSV file is required");
-    }
-
+  constructor() {}
+  static async processCsv(req: Request): Promise<any> {
     let data: Record<string, any>[] = [];
 
-    if (req.file && req.file.mimetype === "text/csv") {
-      data = await readCsvFile(req.file.path);
+    try {
+      if (req.file && req.file.mimetype === "text/csv") {
+        data = await readCsvFile(req.file.path);
 
-      if (req.body?.fileId) {
-        // Both file and fileId provided - UPDATE scenario
-        // const update = await sequelize.query(
-        //   `UPDATE files_data SET file_content = :fileContent, file_name = :fileName, updated_at = NOW() WHERE id = :fileId`,
-        //   {
-        //     replacements: {
-        //       fileContent: JSON.stringify(data),
-        //       fileName: req.file.originalname,
-        //       fileId: req.body.fileId,
-        //     },
-        //     type: QueryTypes.UPDATE,
-        //   }
-        // );
+        if (req.body?.fileId) {
+          const update = await FilesData.update(
+            { fileContent: data, fileName: req.file.originalname },
+            { where: { id: req.body.fileId } }
+          );
 
-        const update = await FilesData.update(
-          { fileContent: data, fileName: req.file.originalname },
-          { where: { id: req.body.fileId } }
-        );
+          if (update[0] === 0) {
+            throw new Error(`File with id ${req.body.fileId} not found`);
+          }
 
-        if (update[0] === 0) {
-          throw new Error(`File with id ${req.body.fileId} not found`);
+          return await FilesData.findOne({
+            where: { id: req.body.fileId },
+            attributes: ["id", "fileName"],
+          }).then((record) => record?.dataValues);
+        } else {
+          const insert = await FilesData.create({
+            fileName: req.file.originalname,
+            fileContent: data,
+          });
+
+          return { id: insert.id };
         }
-
-        return await FilesData.findOne({
-          where: { id: req.body.fileId },
-        }).then((record) => record?.dataValues);
-      } else {
-        const insert = await FilesData.create({
-          fileName: req.file.originalname,
-          fileContent: data,
-        });
-
-        return insert.dataValues;
       }
-    } else if (req.body?.fileId) {
-      // Only fileId provided - RETRIEVE scenario
-      const result = FilesData.findOne({
-        where: { id: req.body.fileId },
+    } catch (err) {
+      throw new Error("catch error while upload file and edit file");
+    }
+  }
+
+  static async getCsvDataByFileId(req: Request) {
+    const { fileId } = req?.query;
+    if (!fileId) {
+      throw new Error("FileId is missing");
+    }
+    try {
+      const result = await FilesData.findOne({
+        where: { id: fileId },
+        attributes: ["fileContent", "fileName"],
       });
+      if (!result) {
+        throw new Error(`File with Id ${fileId} not found`);
+      }
 
-      //   if (!result || result.length === 0) {
-      //     throw new Error(`File with id ${req.body.fileId} not found`);
-      //   }
-
-      //   data = result[0].file_content;
-
-      return data;
-    } else {
-      throw new Error("Either a CSV file or file ID is required");
+      return result?.dataValues;
+    } catch (err) {
+      throw new Error("catch err while fetching the file data by fileid");
     }
   }
 
   static async getColumns(req: Request) {
+    const { fileId } = req?.query;
+    if (!fileId) {
+      throw new Error("FileId is missing");
+    }
     try {
-      const data = await readCsvFile(process.env.CSV_FILE_PATH!, false);
-      if (data?.length) {
-        return Object.keys(data[0]);
+      const data = await FilesData.findOne({
+        where: { id: fileId },
+        attributes: ["fileContent"],
+      });
+
+      if (!data?.dataValues) {
+        throw new Error(`File with Id ${fileId} not found`);
       }
+      const fileContentArray = data.dataValues.fileContent;
+
+      return Object.keys(fileContentArray[0]);
     } catch (err) {
       throw new Error("Failed to retrieve columns");
     }
@@ -85,8 +85,20 @@ class UploadService {
   static async getDataByColumns(req: Request) {
     try {
       const payload = req.body;
-      const data = await readCsvFile(process.env.CSV_FILE_PATH!, false);
-      if (data?.length) {
+      if (!payload?.fileId) {
+        throw new Error("FileId is missing");
+      }
+      const data = await FilesData.findOne({
+        where: { id: payload?.fileId },
+        attributes: ["fileContent"],
+      });
+
+      if (!data?.dataValues) {
+        throw new Error(`File with Id ${payload?.fileId} not found`);
+      }
+      const fileContentArray = data.dataValues.fileContent;
+
+      if (fileContentArray?.length) {
         if (!payload?.xColumn || !payload?.yColumn) {
           throw new Error("X Column and Y Column is required");
         }
@@ -96,7 +108,7 @@ class UploadService {
                 FROM ?
                 GROUP BY ${payload.xColumn}
                 `,
-          [data]
+          [fileContentArray]
         );
         return result;
       }
