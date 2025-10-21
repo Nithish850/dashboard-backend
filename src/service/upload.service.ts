@@ -104,7 +104,9 @@ class UploadService {
         }
         const result = await alasql(
           `
-                SELECT ${payload.xColumn} AS xAxis, SUM(${payload.yColumn}) AS yAxis
+              SELECT ${payload.xColumn} AS xAxis, ${
+            payload?.functionality === "SUM" ? "SUM" : "COUNT"
+          } (${payload.yColumn}) AS yAxis
                 FROM ?
                 GROUP BY ${payload.xColumn}
                 `,
