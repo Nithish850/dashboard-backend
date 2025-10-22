@@ -13,6 +13,50 @@ class UploadController {
       next(error);
     }
   }
+
+  static async getFileDataByFileId(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const results = await UploadService.getCsvDataByFileId(req);
+      res.status(200).json({
+        success: true,
+        data: results,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getColumns(req: Request, res: Response, next: NextFunction) {
+    try {
+      const results = await UploadService.getColumns(req);
+      res.status(200).json({
+        success: true,
+        data: results,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getDataByColumns(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const results = await UploadService.getDataByColumns(req);
+      res.status(200).json({
+        success: true,
+        data: results,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default UploadController;
